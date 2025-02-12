@@ -4,8 +4,9 @@
   "description": "Social Media Application",
   "main": "index.js",
   "scripts": {
-    "clean": "rm -rf frontend/dist backend/dist",
-    "build": "cd frontend && npm install && npx vite build && cd ../backend && npm install",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "cd backend && npm install",
+    "build": "npm install && npm run build:frontend && npm run build:backend",
     "start": "cd backend && npm start",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
