@@ -3,7 +3,12 @@ services:
     name: social-media-app
     env: node
     plan: free
-    buildCommand: npm install && cd frontend && npm install && npm run build && cd ../backend && npm install
+    buildCommand: |
+      chmod +x frontend/build.sh
+      cd frontend
+      ./build.sh
+      cd ../backend
+      npm install
     startCommand: cd backend && npm start
     runtime: node
     nodeVersion: 18
