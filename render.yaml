@@ -3,7 +3,7 @@ services:
     name: social-media-app
     env: node
     plan: free
-    buildCommand: npm install && cd frontend && npm install && npm run build && cd ../backend && npm install
+    buildCommand: npm install && npm run build
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
