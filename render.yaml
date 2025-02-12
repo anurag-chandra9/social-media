@@ -5,6 +5,8 @@ services:
     plan: free
     buildCommand: npm install && npm run build
     startCommand: cd backend && npm start
+    runtime: node
+    nodeVersion: 18
     envVars:
       - key: NODE_ENV
         value: production
