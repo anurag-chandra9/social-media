@@ -20,7 +20,14 @@ transporter.verify(function (error, success) {
 });
 
 export const sendResetPasswordEmail = async (to, resetToken) => {
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+  // Get the base URL based on environment
+  const baseURL = process.env.NODE_ENV === 'production' 
+    ? 'https://social-media-cs6p.onrender.com'
+    : 'http://localhost:5173';
+
+  const resetUrl = `${baseURL}/reset-password/${resetToken}`;
+
+  console.log('Reset password URL:', resetUrl); // For debugging
 
   const mailOptions = {
     from: `"Password Reset" <${process.env.EMAIL_USER}>`,
