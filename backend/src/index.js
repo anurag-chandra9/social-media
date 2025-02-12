@@ -19,12 +19,22 @@ const PORT = process.env.PORT || 3002;
 app.use(express.json());
 app.use(cookieParser());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV
+  });
+});
+
 // CORS configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:5174",
-  "https://social-media-app-anurag.onrender.com" // Add your Render URL
+  "https://social-media-cs6p.onrender.com"
 ];
 
 app.use(
@@ -68,7 +78,13 @@ app.use((err, req, res, next) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`Frontend path: ${process.env.NODE_ENV === "production" ? path.resolve(__dirname, '../../frontend/dist') : 'Not serving frontend in development'}`);
+  console.log('===========================================');
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`📡 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🌐 CORS enabled for origins:`, allowedOrigins);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`📂 Serving frontend from: ${path.resolve(__dirname, '../../frontend/dist')}`);
+  }
+  console.log('===========================================');
   connectDB();
 });

@@ -9,7 +9,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:5174",
-  "https://social-media-app-anurag.onrender.com"
+  "https://social-media-cs6p.onrender.com"
 ];
 
 const io = new Server(server, {
@@ -30,6 +30,11 @@ const io = new Server(server, {
   pingTimeout: 60000,
   transports: ['websocket', 'polling'],
   path: '/socket.io/',
+  cookie: {
+    name: "io",
+    httpOnly: true,
+    sameSite: "lax",
+  }
 });
 
 // used to store online users

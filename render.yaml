@@ -3,8 +3,8 @@ services:
     name: social-media-app
     env: node
     plan: free
-    buildCommand: npm run build
-    startCommand: npm start
+    buildCommand: npm install && cd frontend && npm install && npm run build && cd ../backend && npm install
+    startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -25,7 +25,7 @@ services:
       - key: EMAIL_PASSWORD
         sync: false
       - key: FRONTEND_URL
-        sync: false
+        value: https://social-media-cs6p.onrender.com
 
   - type: web
     name: social-media-frontend
