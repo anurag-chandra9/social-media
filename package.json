@@ -4,8 +4,9 @@
   "description": "Social Media Application",
   "main": "index.js",
   "scripts": {
+    "clean": "rimraf frontend/dist backend/dist",
+    "build": "npm run clean && cd frontend && npm install && npm run build && cd ../backend && npm install",
     "start": "cd backend && npm start",
-    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
@@ -14,7 +15,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "concurrently": "^8.0.1"
+    "concurrently": "^8.0.1",
+    "rimraf": "^5.0.1"
   },
   "engines": {
     "node": ">=18.0.0"

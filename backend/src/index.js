@@ -19,16 +19,6 @@ const PORT = process.env.PORT || 3002;
 app.use(express.json());
 app.use(cookieParser());
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
-  });
-});
-
 // CORS configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
@@ -59,21 +49,30 @@ app.use("/api/posts", postRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {
+  // Get the correct path to the frontend build directory
   const frontendBuildPath = path.resolve(__dirname, '../../frontend/dist');
+  console.log('Serving static files from:', frontendBuildPath);
   
-  // Serve frontend static files
+  // Serve static files
   app.use(express.static(frontendBuildPath));
-
-  // Handle React routing
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(frontendBuildPath, "index.html"));
+  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+  
+  // Handle React routing - this should be after API routes
+  app.get('/*', function (req, res) {
+    console.log('Handling route:', req.url);
+    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'), function(err) {
+      if (err) {
+        console.error('Error sending file:', err);
+        res.status(500).send(err);
+      }
+    });
   });
 }
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Something went wrong!" });
+  console.error('Error:', err.stack);
+  res.status(500).json({ message: "Something went wrong!", error: err.message });
 });
 
 // Start server
