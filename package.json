@@ -1,0 +1,22 @@
+{
+  "name": "social-media-app",
+  "version": "1.0.0",
+  "description": "Social Media Application",
+  "main": "index.js",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
