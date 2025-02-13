@@ -1,38 +1,21 @@
 import axios from "axios";
 
-// Get the base URL from environment or fallback to window.location.origin
-const BASE_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.MODE === "development" 
-    ? "http://localhost:3001"
-    : window.location.origin);
-
-console.log('API Base URL:', BASE_URL);
+const baseURL = import.meta.env.MODE === "development" 
+  ? "http://localhost:3001/api"
+  : `${window.location.origin}/api`;
 
 export const axiosInstance = axios.create({
-  baseURL: `${BASE_URL}/api`,
+  baseURL,
   withCredentials: true,
-  timeout: 30000,
+  timeout: 30000, // Increased timeout for file uploads
   headers: {
-    "Content-Type": "application/json",
+    "Content-Type": "multipart/form-data", // Changed for file uploads
   },
 });
 
-// Add request interceptor
+// Add request interceptor for error handling
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Log request details in development
-    if (import.meta.env.DEV) {
-      console.log('Request:', {
-        url: config.url,
-        method: config.method,
-        headers: config.headers,
-        data: config.data instanceof FormData ? 'FormData' : config.data
-      });
-    }
-
-    if (config.data instanceof FormData) {
-      config.headers["Content-Type"] = "multipart/form-data";
-    }
     return config;
   },
   (error) => {
@@ -41,36 +24,11 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Add response interceptor
+// Add response interceptor for error handling
 axiosInstance.interceptors.response.use(
-  (response) => {
-    // Log response in development
-    if (import.meta.env.DEV) {
-      console.log('Response:', {
-        url: response.config.url,
-        status: response.status,
-        data: response.data
-      });
-    }
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Detailed error logging
-    if (error.response) {
-      console.error("Response Error:", {
-        url: error.config?.url,
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers
-      });
-    } else if (error.request) {
-      console.error("Request Error:", {
-        url: error.config?.url,
-        request: error.request
-      });
-    } else {
-      console.error("Error:", error.message);
-    }
+    console.error("API Error:", error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
