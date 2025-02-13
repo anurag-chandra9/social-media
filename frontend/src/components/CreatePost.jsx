@@ -13,43 +13,97 @@ const CreatePost = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
     }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    setImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim()) {
+      toast.error('Please enter some content');
+      return;
+    }
 
     try {
       const formData = new FormData();
-      formData.append("content", content);
+      formData.append("content", content.trim());
       
       if (image) {
+        console.log('Appending image to FormData:', {
+          name: image.name,
+          type: image.type,
+          size: image.size
+        });
         formData.append("image", image);
+
+        // Log FormData contents
+        console.log('FormData contents:');
+        for (let [key, value] of formData.entries()) {
+          console.log(key, ':', value instanceof File ? {
+            name: value.name,
+            type: value.type,
+            size: value.size
+          } : value);
+        }
       }
 
+      console.log('Submitting post with image:', !!image);
       const response = await createPost(formData);
       
       if (image && (!response?.image || response.image === '')) {
-        console.error('Image upload failed:', response);
-        toast.error('Image upload failed. Please try again.');
+        console.error('Image upload failed:', {
+          response,
+          imageDetails: image ? {
+            name: image.name,
+            type: image.type,
+            size: image.size
+          } : null
+        });
+        toast.error('Image upload failed. Please try again with a smaller image or different format.');
         return;
       }
       
+      // Clear form only if post was successful
       setContent("");
       setImage(null);
       setImagePreview("");
       toast.success('Post created successfully!');
     } catch (error) {
-      console.error('Error creating post:', error);
-      toast.error(error.response?.data?.message || 'Error creating post');
+      console.error('Error creating post:', {
+        error,
+        response: error.response,
+        imageDetails: image ? {
+          name: image.name,
+          type: image.type,
+          size: image.size
+        } : null
+      });
+      const errorMessage = error.response?.data?.message || 'Error creating post';
+      toast.error(errorMessage);
+      
+      // If it's a file-related error, clear the image
+      if (errorMessage.toLowerCase().includes('image') || errorMessage.toLowerCase().includes('file')) {
+        setImage(null);
+        setImagePreview("");
+      }
     }
   };
 
@@ -72,6 +126,7 @@ const CreatePost = () => {
             placeholder="What's on your mind?"
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            maxLength={500}
           />
 
           {imagePreview && (

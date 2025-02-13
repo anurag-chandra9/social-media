@@ -3,44 +3,115 @@ import { uploadImage, deleteImage } from "../lib/cloudinary.js";
 
 // Create a new post
 export const createPost = async (req, res) => {
+  let imageUrl = "";
+  
   try {
     const { content } = req.body;
-    let imageUrl = "";
+    console.log('Creating post with:', {
+      hasContent: !!content,
+      hasFile: !!req.file,
+      fileDetails: req.file ? {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        hasBuffer: !!req.file.buffer,
+        bufferLength: req.file.buffer?.length
+      } : null
+    });
 
+    // Validate content
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: "Content is required" });
+    }
+
+    // Handle image upload if present
     if (req.file) {
       try {
-        if (!req.file.buffer) {
-          throw new Error('No file buffer found');
+        console.log('Starting image upload to Cloudinary...');
+        
+        // Validate file size (5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (req.file.size > maxSize) {
+          throw new Error(`File size too large. Maximum size is ${maxSize / (1024 * 1024)}MB`);
         }
 
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+          throw new Error(`Invalid file type. Allowed types are: ${allowedTypes.join(', ')}`);
+        }
+
+        // Upload to Cloudinary
         imageUrl = await uploadImage(req.file);
-
+        
         if (!imageUrl) {
-          throw new Error('No image URL returned from Cloudinary');
+          console.error('Cloudinary upload failed - no URL returned');
+          throw new Error('Failed to upload image');
         }
+
+        console.log('Image uploaded successfully:', imageUrl);
       } catch (error) {
-        console.error('Error uploading image to Cloudinary:', error);
+        console.error('Image upload error:', {
+          message: error.message,
+          stack: error.stack,
+          file: {
+            fieldname: req.file.fieldname,
+            size: req.file.size,
+            type: req.file.mimetype,
+            name: req.file.originalname,
+            hasBuffer: !!req.file.buffer
+          }
+        });
         return res.status(400).json({ 
-          message: "Error uploading image",
-          error: error.message 
+          message: `Error uploading image: ${error.message}`,
+          details: error.message
         });
       }
     }
 
+    // Create post
     const post = await Post.create({
-      content,
+      content: content.trim(),
       image: imageUrl,
       user: req.user._id,
     });
 
+    // Populate user data
     const populatedPost = await Post.findById(post._id)
       .populate("user", "-password")
       .populate("comments.user", "-password");
 
+    console.log('Post created successfully:', {
+      id: populatedPost._id,
+      hasImage: !!populatedPost.image,
+      imageUrl: populatedPost.image,
+      content: populatedPost.content
+    });
+
     res.status(201).json(populatedPost);
   } catch (error) {
-    console.error("Error in createPost: ", error);
-    res.status(500).json({ message: error.message });
+    console.error("Error creating post:", {
+      message: error.message,
+      stack: error.stack,
+      hasImage: !!imageUrl,
+      imageUrl
+    });
+
+    // Clean up uploaded image if post creation fails
+    if (imageUrl) {
+      try {
+        await deleteImage(imageUrl);
+        console.log('Cleaned up image after failed post creation');
+      } catch (cleanupError) {
+        console.error('Error cleaning up image:', cleanupError);
+      }
+    }
+
+    res.status(500).json({ 
+      message: error.message || "Error creating post",
+      details: error.message
+    });
   }
 };
 
@@ -62,7 +133,13 @@ export const deletePost = async (req, res) => {
 
     // Delete image from cloudinary if exists
     if (post.image) {
-      await deleteImage(post.image);
+      try {
+        await deleteImage(post.image);
+        console.log('Image deleted from Cloudinary');
+      } catch (error) {
+        console.error('Error deleting image from Cloudinary:', error);
+        // Continue with post deletion even if image deletion fails
+      }
     }
 
     await Post.findByIdAndDelete(postId);
@@ -129,12 +206,16 @@ export const addComment = async (req, res) => {
     const { content } = req.body;
     const userId = req.user._id;
 
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: "Comment content is required" });
+    }
+
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    post.comments.push({ user: userId, content });
+    post.comments.push({ user: userId, content: content.trim() });
     await post.save();
 
     const updatedPost = await Post.findById(postId)
@@ -154,6 +235,10 @@ export const updatePost = async (req, res) => {
     const { content } = req.body;
     const userId = req.user._id;
 
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: "Content is required" });
+    }
+
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
@@ -168,20 +253,38 @@ export const updatePost = async (req, res) => {
 
     if (req.file) {
       try {
+        // Validate file size (5MB)
+        if (req.file.size > 5 * 1024 * 1024) {
+          throw new Error('File size too large. Maximum size is 5MB');
+        }
+
+        // Validate file type
+        if (!req.file.mimetype.startsWith('image/')) {
+          throw new Error('Invalid file type. Only images are allowed');
+        }
+
         // Delete old image if exists
         if (post.image) {
           await deleteImage(post.image);
         }
+
         // Upload new image
         imageUrl = await uploadImage(req.file);
+        
+        if (!imageUrl) {
+          throw new Error('Failed to upload new image');
+        }
       } catch (error) {
-        return res.status(400).json({ message: "Error uploading image" });
+        return res.status(400).json({ message: error.message });
       }
     }
 
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
-      { content, image: imageUrl },
+      { 
+        content: content.trim(), 
+        image: imageUrl 
+      },
       { new: true }
     )
       .populate("user", "-password")
