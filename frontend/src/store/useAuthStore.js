@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 import { usePostStore } from "./usePostStore.js";
 
 const BASE_URL = import.meta.env.MODE === "development" 
-  ? "http://localhost:3002"
+  ? "http://localhost:3001"
   : window.location.origin; // In production, use the same origin as the frontend
 
 export const useAuthStore = create((set, get) => ({
@@ -47,12 +47,15 @@ export const useAuthStore = create((set, get) => ({
   login: async (data) => {
     set({ isLoggingIn: true });
     try {
+      console.log('Sending login request with data:', data);
       const res = await axiosInstance.post("/auth/login", data);
+      console.log('Login response:', res.data);
       set({ authUser: res.data });
       toast.success("Logged in successfully");
       get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      console.error('Login error:', error.response?.data || error.message);
+      toast.error(error.response?.data?.message || "Error logging in");
     } finally {
       set({ isLoggingIn: false });
     }

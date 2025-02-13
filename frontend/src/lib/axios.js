@@ -9,13 +9,17 @@ export const axiosInstance = axios.create({
   withCredentials: true,
   timeout: 30000, // Increased timeout for file uploads
   headers: {
-    "Content-Type": "multipart/form-data", // Changed for file uploads
+    "Content-Type": "application/json", // Default to JSON
   },
 });
 
 // Add request interceptor for error handling
 axiosInstance.interceptors.request.use(
   (config) => {
+    // Set Content-Type to multipart/form-data only for FormData requests
+    if (config.data instanceof FormData) {
+      config.headers["Content-Type"] = "multipart/form-data";
+    }
     return config;
   },
   (error) => {
