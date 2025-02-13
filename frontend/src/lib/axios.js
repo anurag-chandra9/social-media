@@ -13,16 +13,9 @@ export const axiosInstance = axios.create({
   },
 });
 
-// Add request interceptor for debugging
+// Add request interceptor for error handling
 axiosInstance.interceptors.request.use(
   (config) => {
-    if (config.data instanceof FormData) {
-      console.log('Sending FormData:', {
-        url: config.url,
-        method: config.method,
-        hasFile: Array.from(config.data.entries()).some(([_, value]) => value instanceof File)
-      });
-    }
     return config;
   },
   (error) => {

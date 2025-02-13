@@ -15,11 +15,9 @@ const allowedOrigins = [
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
       
       if (allowedOrigins.indexOf(origin) === -1) {
-        console.log('Socket origin not allowed:', origin);
         return callback(null, true); // Allow all origins in production
       }
       return callback(null, true);
@@ -41,8 +39,6 @@ const io = new Server(server, {
 const userSocketMap = {}; // {userId: socketId}
 
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.id);
-
   const userId = socket.handshake.query.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
@@ -63,7 +59,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("A user disconnected", socket.id);
     delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });

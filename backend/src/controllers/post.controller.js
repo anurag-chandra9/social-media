@@ -7,28 +7,13 @@ export const createPost = async (req, res) => {
     const { content } = req.body;
     let imageUrl = "";
 
-    console.log('Creating post with content:', content);
-    console.log('Request headers:', req.headers);
-    console.log('Request file details:', {
-      exists: !!req.file,
-      fileInfo: req.file ? {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        buffer: !!req.file.buffer
-      } : null
-    });
-
     if (req.file) {
       try {
         if (!req.file.buffer) {
           throw new Error('No file buffer found');
         }
 
-        console.log('Attempting to upload image to Cloudinary...');
         imageUrl = await uploadImage(req.file);
-        console.log('Image uploaded successfully to Cloudinary:', imageUrl);
 
         if (!imageUrl) {
           throw new Error('No image URL returned from Cloudinary');
@@ -42,12 +27,6 @@ export const createPost = async (req, res) => {
       }
     }
 
-    console.log('Creating post with data:', {
-      content,
-      imageUrl,
-      userId: req.user._id
-    });
-
     const post = await Post.create({
       content,
       image: imageUrl,
@@ -57,13 +36,6 @@ export const createPost = async (req, res) => {
     const populatedPost = await Post.findById(post._id)
       .populate("user", "-password")
       .populate("comments.user", "-password");
-
-    console.log('Created post:', {
-      id: populatedPost._id,
-      content: populatedPost.content,
-      image: populatedPost.image,
-      user: populatedPost.user._id
-    });
 
     res.status(201).json(populatedPost);
   } catch (error) {

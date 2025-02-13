@@ -27,40 +27,24 @@ verifyConfig();
 
 export const uploadImage = async (file, folder = 'posts') => {
   try {
-    // Validate file object
     if (!file) {
       throw new Error('No file provided');
     }
 
-    // Validate file buffer
     if (!file.buffer || file.buffer.length === 0) {
-      console.error('Invalid file buffer:', {
-        hasBuffer: !!file.buffer,
-        bufferLength: file.buffer ? file.buffer.length : 0
-      });
       throw new Error('Invalid or empty file buffer');
     }
 
-    // Validate file type
     if (!file.mimetype || !file.mimetype.startsWith('image/')) {
       throw new Error(`Invalid file type: ${file.mimetype}`);
     }
 
-    console.log('Starting Cloudinary upload process:', {
-      fileType: file.mimetype,
-      fileSize: file.size,
-      folder: folder,
-      bufferSize: file.buffer.length
-    });
-
-    // Convert buffer to base64
     const b64 = Buffer.from(file.buffer).toString("base64");
     if (!b64) {
       throw new Error('Failed to convert buffer to base64');
     }
     
     const dataURI = "data:" + file.mimetype + ";base64," + b64;
-    console.log('Prepared data URI for upload');
 
     const uploadOptions = {
       resource_type: "auto",
@@ -71,8 +55,6 @@ export const uploadImage = async (file, folder = 'posts') => {
       ]
     };
 
-    console.log('Uploading to Cloudinary with options:', uploadOptions);
-
     const result = await cloudinary.uploader.upload(dataURI, uploadOptions);
     
     if (!result) {
@@ -80,30 +62,12 @@ export const uploadImage = async (file, folder = 'posts') => {
     }
 
     if (!result.secure_url) {
-      console.error('Invalid Cloudinary response:', result);
       throw new Error('No secure URL in Cloudinary response');
     }
 
-    console.log('Cloudinary upload successful:', {
-      url: result.secure_url,
-      publicId: result.public_id,
-      format: result.format,
-      size: result.bytes,
-      width: result.width,
-      height: result.height
-    });
-
     return result.secure_url;
   } catch (error) {
-    console.error('Error in uploadImage:', {
-      error: error.message,
-      stack: error.stack,
-      fileInfo: file ? {
-        mimetype: file.mimetype,
-        size: file.size,
-        hasBuffer: !!file.buffer
-      } : 'No file'
-    });
+    console.error('Error in uploadImage:', error);
     throw error;
   }
 };

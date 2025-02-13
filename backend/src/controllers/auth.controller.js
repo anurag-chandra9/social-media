@@ -68,42 +68,33 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { login, password } = req.body;
-    console.log("Received login request with:", { login });
     
     if (!login || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     const lowercaseLogin = login.toLowerCase().trim();
-    console.log("Searching for user with:", lowercaseLogin);
 
     // First try to find by username
     let user = await User.findOne({ username: lowercaseLogin });
-    console.log("Search by username result:", user ? "Found" : "Not found");
 
     // If not found by username, try email
     if (!user) {
       user = await User.findOne({ email: lowercaseLogin });
-      console.log("Search by email result:", user ? "Found" : "Not found");
     }
 
     if (!user) {
-      console.log("No user found with provided credentials");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    console.log("User found, verifying password");
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     
     if (!isPasswordCorrect) {
-      console.log("Password verification failed");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    console.log("Password verified, generating token");
     generateToken(user._id, res);
 
-    console.log("Login successful");
     res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
@@ -112,7 +103,7 @@ export const login = async (req, res) => {
       profilePic: user.profilePic,
     });
   } catch (error) {
-    console.log("Error in login controller:", error.message);
+    console.error("Error in login controller:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

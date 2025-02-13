@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 // Verify transporter configuration
 transporter.verify(function (error, success) {
   if (error) {
-    console.log("Error verifying mail transporter:", error);
+    console.error("Error verifying mail transporter:", error);
   } else {
     console.log("Mail server is ready to send emails");
   }
@@ -26,8 +26,6 @@ export const sendResetPasswordEmail = async (to, resetToken) => {
     : 'http://localhost:5173';
 
   const resetUrl = `${baseURL}/reset-password/${resetToken}`;
-
-  console.log('Reset password URL:', resetUrl); // For debugging
 
   const mailOptions = {
     from: `"Password Reset" <${process.env.EMAIL_USER}>`,
@@ -64,7 +62,6 @@ export const sendResetPasswordEmail = async (to, resetToken) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log("Password reset email sent successfully");
   } catch (error) {
     console.error("Error sending password reset email:", error);
     throw error;

@@ -32,25 +32,13 @@ const CreatePost = () => {
       formData.append("content", content);
       
       if (image) {
-        console.log('Adding image to FormData:', {
-          name: image.name,
-          type: image.type,
-          size: image.size
-        });
         formData.append("image", image);
       }
 
-      // Log FormData contents
-      console.log('FormData contents:');
-      for (let [key, value] of formData.entries()) {
-        console.log(key, ':', value instanceof File ? `File: ${value.name}` : value);
-      }
-
       const response = await createPost(formData);
-      console.log('Post creation response:', response);
       
       if (image && (!response?.image || response.image === '')) {
-        console.error('Image URL missing in created post:', response);
+        console.error('Image upload failed:', response);
         toast.error('Image upload failed. Please try again.');
         return;
       }
