@@ -2,6 +2,7 @@ import { useState } from "react";
 import { usePostStore } from "../store/usePostStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { ImagePlus, Loader2, X } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 const CreatePost = () => {
   const [content, setContent] = useState("");
@@ -33,11 +34,25 @@ const CreatePost = () => {
       formData.append("image", image);
     }
 
-    console.log('Submitting post with image:', image ? 'Yes' : 'No');
-    await createPost(formData);
-    setContent("");
-    setImage(null);
-    setImagePreview("");
+    try {
+      console.log('Submitting post with image:', image ? 'Yes' : 'No');
+      const response = await createPost(formData);
+      console.log('Post creation response:', response);
+      
+      // Verify the image URL in the created post
+      if (image && (!response?.image || response.image === '')) {
+        console.error('Image URL missing in created post:', response);
+        toast.error('Image upload failed. Please try again.');
+        return;
+      }
+      
+      setContent("");
+      setImage(null);
+      setImagePreview("");
+    } catch (error) {
+      console.error('Error creating post:', error);
+      toast.error(error.response?.data?.message || 'Error creating post');
+    }
   };
 
   const removeImage = () => {

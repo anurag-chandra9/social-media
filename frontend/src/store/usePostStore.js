@@ -45,14 +45,30 @@ export const usePostStore = create((set, get) => ({
   createPost: async (data) => {
     set({ isLoading: true });
     try {
+      console.log('Sending post data to server...');
       const res = await axiosInstance.post("/posts/create", data);
+      console.log('Server response:', res.data);
+      
+      if (!res.data) {
+        throw new Error('No response data from server');
+      }
+
+      // Verify the post data
+      if (data.get('image') && !res.data.image) {
+        console.warn('Image was sent but no image URL in response:', res.data);
+      }
+
       set((state) => ({ posts: [res.data, ...state.posts] }));
       toast.success("Post created successfully");
       
       // Emit socket event
       useAuthStore.getState().socket?.emit("newPost", res.data);
+      
+      return res.data;
     } catch (error) {
+      console.error('Error in createPost:', error);
       toast.error(error.response?.data?.message || "Error creating post");
+      throw error;
     } finally {
       set({ isLoading: false });
     }

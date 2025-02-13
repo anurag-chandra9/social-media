@@ -7,32 +7,43 @@ export const createPost = async (req, res) => {
     const { content } = req.body;
     let imageUrl = "";
 
-    console.log('Request file:', req.file);
+    console.log('Creating post with content:', content);
+    console.log('Request file details:', {
+      exists: !!req.file,
+      fileInfo: req.file ? {
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        buffer: !!req.file.buffer
+      } : null
+    });
+
     if (req.file) {
       try {
-        console.log('Uploading image to Cloudinary...');
+        console.log('Attempting to upload image to Cloudinary...');
         imageUrl = await uploadImage(req.file);
-        console.log('Image uploaded successfully:', imageUrl);
+        console.log('Image uploaded successfully to Cloudinary:', imageUrl);
       } catch (error) {
-        console.error('Error uploading image:', error);
+        console.error('Error uploading image to Cloudinary:', error);
         return res.status(400).json({ message: "Error uploading image" });
       }
     }
 
+    console.log('Creating post in database with imageUrl:', imageUrl);
     const post = await Post.create({
       content,
       image: imageUrl,
       user: req.user._id,
     });
 
-    console.log('Post created with image:', imageUrl ? 'Yes' : 'No');
+    console.log('Post created in database, fetching populated post...');
     const populatedPost = await Post.findById(post._id)
       .populate("user", "-password")
       .populate("comments.user", "-password");
 
+    console.log('Sending response with populated post. Image URL:', populatedPost.image);
     res.status(201).json(populatedPost);
   } catch (error) {
-    console.log("Error in createPost: ", error.message);
+    console.error("Error in createPost: ", error);
     res.status(500).json({ message: error.message });
   }
 };
