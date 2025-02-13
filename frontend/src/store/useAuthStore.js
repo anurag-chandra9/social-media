@@ -4,10 +4,13 @@ import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 import { usePostStore } from "./usePostStore.js";
 
-// In development, use localhost. In production, use full origin for socket.io
-const BASE_URL = import.meta.env.MODE === "development" 
-  ? "http://localhost:3001"
-  : window.location.origin;
+// Get the socket URL from environment or fallback to window.location.origin
+const SOCKET_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.MODE === "development" 
+    ? "http://localhost:3001"
+    : window.location.origin);
+
+console.log('Socket URL:', SOCKET_URL);
 
 const validateUserData = (data) => {
   if (!data || typeof data !== 'object') return false;
@@ -24,6 +27,7 @@ export const useAuthStore = create((set, get) => ({
   isCheckingAuth: true,
   onlineUsers: [],
   socket: null,
+  socketConnected: false,
 
   checkAuth: async () => {
     try {
@@ -32,6 +36,7 @@ export const useAuthStore = create((set, get) => ({
       
       if (validateUserData(res.data)) {
         set({ authUser: res.data });
+        get().connectSocket(); // Reconnect socket if needed
       } else {
         console.warn("Invalid user data received from checkAuth:", res.data);
         set({ authUser: null });
@@ -125,27 +130,23 @@ export const useAuthStore = create((set, get) => ({
   },
 
   connectSocket: () => {
-    const { authUser, socket } = get();
+    const { authUser, socket, socketConnected } = get();
     
-    if (!validateUserData(authUser)) {
-      console.warn("Cannot connect socket: Invalid user data", authUser);
-      return;
-    }
-
-    if (socket?.connected) {
-      console.log("Socket already connected");
+    // Don't proceed if already connected or no valid user
+    if (socketConnected || !validateUserData(authUser)) {
+      console.log("Socket connection skipped:", { 
+        socketConnected, 
+        hasValidUser: validateUserData(authUser) 
+      });
       return;
     }
 
     try {
       // Clean up existing socket if any
-      if (socket) {
-        console.log("Cleaning up existing socket");
-        socket.disconnect();
-      }
+      get().disconnectSocket();
 
-      console.log("Creating new socket connection");
-      const newSocket = io(BASE_URL, {
+      console.log("Creating new socket connection to:", SOCKET_URL);
+      const newSocket = io(SOCKET_URL, {
         path: '/socket.io/',
         withCredentials: true,
         transports: ['websocket', 'polling'],
@@ -160,15 +161,18 @@ export const useAuthStore = create((set, get) => ({
       const handlers = {
         connect: () => {
           console.log("Socket connected successfully");
+          set({ socketConnected: true });
           newSocket.emit("setup", authUser._id);
         },
         connect_error: (error) => {
           console.error("Socket connection error:", error);
+          set({ socketConnected: false });
         },
         disconnect: (reason) => {
           console.log("Socket disconnected:", reason);
+          set({ socketConnected: false });
           if (reason === "io server disconnect") {
-            newSocket.connect();
+            setTimeout(() => newSocket.connect(), 1000);
           }
         },
         getOnlineUsers: (users) => {
@@ -191,6 +195,10 @@ export const useAuthStore = create((set, get) => ({
           if (!postId) return;
           console.log("Post delete received:", postId);
           usePostStore.getState().handlePostDelete(postId);
+        },
+        error: (error) => {
+          console.error("Socket error:", error);
+          set({ socketConnected: false });
         }
       };
 
@@ -202,7 +210,7 @@ export const useAuthStore = create((set, get) => ({
       set({ socket: newSocket });
     } catch (error) {
       console.error("Error setting up socket connection:", error);
-      set({ socket: null });
+      set({ socket: null, socketConnected: false });
     }
   },
 
@@ -216,7 +224,7 @@ export const useAuthStore = create((set, get) => ({
     } catch (error) {
       console.error("Error disconnecting socket:", error);
     } finally {
-      set({ socket: null, onlineUsers: [] });
+      set({ socket: null, socketConnected: false, onlineUsers: [] });
     }
   }
 }));

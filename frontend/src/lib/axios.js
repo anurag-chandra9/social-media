@@ -1,24 +1,35 @@
 import axios from "axios";
 
-// In production, use the same origin as the frontend since backend is served from the same domain
-// In development, use the local development server
-const baseURL = import.meta.env.MODE === "development" 
-  ? "http://localhost:3001/api"
-  : "/api"; // Just use /api in production since we're serving from same origin
+// Get the base URL from environment or fallback to window.location.origin
+const BASE_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.MODE === "development" 
+    ? "http://localhost:3001"
+    : window.location.origin);
+
+console.log('API Base URL:', BASE_URL);
 
 export const axiosInstance = axios.create({
-  baseURL,
+  baseURL: `${BASE_URL}/api`,
   withCredentials: true,
-  timeout: 30000, // Increased timeout for file uploads
+  timeout: 30000,
   headers: {
-    "Content-Type": "application/json", // Default to JSON
+    "Content-Type": "application/json",
   },
 });
 
-// Add request interceptor for error handling
+// Add request interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Set Content-Type to multipart/form-data only for FormData requests
+    // Log request details in development
+    if (import.meta.env.DEV) {
+      console.log('Request:', {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        data: config.data instanceof FormData ? 'FormData' : config.data
+      });
+    }
+
     if (config.data instanceof FormData) {
       config.headers["Content-Type"] = "multipart/form-data";
     }
@@ -30,22 +41,36 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Add response interceptor for error handling
+// Add response interceptor
 axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Log more detailed error information
-    if (error.response) {
-      console.error("Response Error Data:", error.response.data);
-      console.error("Response Error Status:", error.response.status);
-      console.error("Response Error Headers:", error.response.headers);
-    } else if (error.request) {
-      console.error("Request Error:", error.request);
-    } else {
-      console.error("Error Message:", error.message);
+  (response) => {
+    // Log response in development
+    if (import.meta.env.DEV) {
+      console.log('Response:', {
+        url: response.config.url,
+        status: response.status,
+        data: response.data
+      });
     }
-    console.error("Error Config:", error.config);
-    
+    return response;
+  },
+  (error) => {
+    // Detailed error logging
+    if (error.response) {
+      console.error("Response Error:", {
+        url: error.config?.url,
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    } else if (error.request) {
+      console.error("Request Error:", {
+        url: error.config?.url,
+        request: error.request
+      });
+    } else {
+      console.error("Error:", error.message);
+    }
     return Promise.reject(error);
   }
 );
