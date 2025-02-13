@@ -22,10 +22,12 @@ transporter.verify(function (error, success) {
 export const sendResetPasswordEmail = async (to, resetToken) => {
   // Get the base URL based on environment
   const baseURL = process.env.NODE_ENV === 'production' 
-    ? 'https://social-media-cs6p.onrender.com'
+    ? 'https://social-media-1-wrnq.onrender.com'
     : 'http://localhost:5173';
 
+  console.log('Reset password baseURL:', baseURL);
   const resetUrl = `${baseURL}/reset-password/${resetToken}`;
+  console.log('Reset password URL:', resetUrl);
 
   const mailOptions = {
     from: `"Password Reset" <${process.env.EMAIL_USER}>`,
@@ -62,6 +64,7 @@ export const sendResetPasswordEmail = async (to, resetToken) => {
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log('Password reset email sent successfully to:', to);
   } catch (error) {
     console.error("Error sending password reset email:", error);
     throw error;
