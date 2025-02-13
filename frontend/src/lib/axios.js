@@ -1,8 +1,10 @@
 import axios from "axios";
 
+// In production, use the same origin as the frontend since backend is served from the same domain
+// In development, use the local development server
 const baseURL = import.meta.env.MODE === "development" 
   ? "http://localhost:3001/api"
-  : `${window.location.origin}/api`;
+  : "/api"; // Just use /api in production since we're serving from same origin
 
 export const axiosInstance = axios.create({
   baseURL,
@@ -32,7 +34,18 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("API Error:", error.response?.data || error.message);
+    // Log more detailed error information
+    if (error.response) {
+      console.error("Response Error Data:", error.response.data);
+      console.error("Response Error Status:", error.response.status);
+      console.error("Response Error Headers:", error.response.headers);
+    } else if (error.request) {
+      console.error("Request Error:", error.request);
+    } else {
+      console.error("Error Message:", error.message);
+    }
+    console.error("Error Config:", error.config);
+    
     return Promise.reject(error);
   }
 );

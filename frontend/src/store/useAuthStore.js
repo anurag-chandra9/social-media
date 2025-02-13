@@ -4,9 +4,10 @@ import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 import { usePostStore } from "./usePostStore.js";
 
+// In development, use localhost. In production, use relative path since backend is served from same origin
 const BASE_URL = import.meta.env.MODE === "development" 
   ? "http://localhost:3001"
-  : window.location.origin; // In production, use the same origin as the frontend
+  : ""; // Empty string means same origin
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -20,11 +21,17 @@ export const useAuthStore = create((set, get) => ({
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check");
-      set({ authUser: res.data });
-      get().connectSocket();
+      if (res.data) {
+        set({ authUser: res.data });
+        get().connectSocket();
+      } else {
+        set({ authUser: null });
+        get().disconnectSocket();
+      }
     } catch (error) {
       console.log("Error in checkAuth:", error);
       set({ authUser: null });
+      get().disconnectSocket();
     } finally {
       set({ isCheckingAuth: false });
     }
@@ -88,75 +95,61 @@ export const useAuthStore = create((set, get) => ({
 
   connectSocket: () => {
     const { authUser } = get();
-    if (!authUser || get().socket?.connected) return;
+    if (!authUser?._id || get().socket?.connected) return;
 
-    const socket = io(BASE_URL, {
-      query: {
-        userId: authUser._id,
-      },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      timeout: 10000,
-    });
+    try {
+      const socket = io(BASE_URL, {
+        path: '/socket.io/',
+        withCredentials: true,
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        query: {
+          userId: authUser._id
+        }
+      });
 
-    socket.on("connect", () => {
-      console.log("Socket connected");
-    });
+      socket.on("connect", () => {
+        console.log("Socket connected successfully");
+      });
 
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
+      socket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+      });
 
-    socket.on("reconnect", (attemptNumber) => {
-      console.log("Socket reconnected after", attemptNumber, "attempts");
-    });
+      socket.on("getOnlineUsers", (users) => {
+        console.log("Online users:", users);
+        set({ onlineUsers: users });
+      });
 
-    socket.on("reconnect_error", (error) => {
-      console.error("Socket reconnection error:", error);
-    });
+      // Handle post events
+      socket.on("newPost", (post) => {
+        console.log("New post received:", post);
+        usePostStore.getState().handleNewPost(post);
+      });
 
-    socket.on("newPost", (post) => {
-      console.log("New post received:", post);
-      usePostStore.getState().handleNewPost(post);
-    });
+      socket.on("updatePost", (updatedPost) => {
+        console.log("Post update received:", updatedPost);
+        usePostStore.getState().handlePostUpdate(updatedPost);
+      });
 
-    socket.on("updatePost", (updatedPost) => {
-      console.log("Post update received:", updatedPost);
-      usePostStore.getState().handlePostUpdate(updatedPost);
-    });
+      socket.on("deletePost", (postId) => {
+        console.log("Post delete received:", postId);
+        usePostStore.getState().handlePostDelete(postId);
+      });
 
-    socket.on("deletePost", (postId) => {
-      console.log("Post delete received:", postId);
-      usePostStore.getState().handlePostDelete(postId);
-    });
-
-    socket.on("getOnlineUsers", (userIds) => {
-      console.log("Online users:", userIds);
-      set({ onlineUsers: userIds });
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
-    socket.on("error", (error) => {
-      console.error("Socket error:", error);
-    });
-
-    socket.connect();
-    set({ socket });
+      set({ socket });
+    } catch (error) {
+      console.error("Error setting up socket connection:", error);
+    }
   },
 
   disconnectSocket: () => {
-    const socket = get().socket;
+    const { socket } = get();
     if (socket) {
-      socket.off("newPost");
-      socket.off("updatePost");
-      socket.off("deletePost");
-      socket.off("getOnlineUsers");
       socket.disconnect();
-      set({ socket: null });
+      set({ socket: null, onlineUsers: [] });
     }
   },
 }));
