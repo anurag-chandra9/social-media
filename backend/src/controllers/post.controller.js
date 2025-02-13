@@ -7,10 +7,14 @@ export const createPost = async (req, res) => {
     const { content } = req.body;
     let imageUrl = "";
 
+    console.log('Request file:', req.file);
     if (req.file) {
       try {
+        console.log('Uploading image to Cloudinary...');
         imageUrl = await uploadImage(req.file);
+        console.log('Image uploaded successfully:', imageUrl);
       } catch (error) {
+        console.error('Error uploading image:', error);
         return res.status(400).json({ message: "Error uploading image" });
       }
     }
@@ -21,6 +25,7 @@ export const createPost = async (req, res) => {
       user: req.user._id,
     });
 
+    console.log('Post created with image:', imageUrl ? 'Yes' : 'No');
     const populatedPost = await Post.findById(post._id)
       .populate("user", "-password")
       .populate("comments.user", "-password");

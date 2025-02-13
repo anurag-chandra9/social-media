@@ -27,9 +27,21 @@ verifyConfig();
 
 export const uploadImage = async (file, folder = 'posts') => {
   try {
+    console.log('Starting image upload to Cloudinary...');
+    console.log('File details:', {
+      mimetype: file.mimetype,
+      size: file.size,
+      hasBuffer: !!file.buffer
+    });
+
     const b64 = Buffer.from(file.buffer).toString("base64");
     const dataURI = "data:" + file.mimetype + ";base64," + b64;
     
+    console.log('Uploading to Cloudinary with options:', {
+      folder,
+      resourceType: "auto"
+    });
+
     const result = await cloudinary.uploader.upload(dataURI, {
       resource_type: "auto",
       folder: folder,
@@ -39,6 +51,11 @@ export const uploadImage = async (file, folder = 'posts') => {
       ]
     });
     
+    console.log('Cloudinary upload successful:', {
+      url: result.secure_url,
+      publicId: result.public_id
+    });
+
     return result.secure_url;
   } catch (error) {
     console.error('Error uploading to Cloudinary:', error);

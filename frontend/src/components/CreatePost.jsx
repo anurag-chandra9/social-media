@@ -29,9 +29,11 @@ const CreatePost = () => {
     const formData = new FormData();
     formData.append("content", content);
     if (image) {
+      console.log('Image being added to FormData:', image);
       formData.append("image", image);
     }
 
+    console.log('Submitting post with image:', image ? 'Yes' : 'No');
     await createPost(formData);
     setContent("");
     setImage(null);
