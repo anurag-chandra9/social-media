@@ -13,33 +13,36 @@ const allowedOrigins = [
 ];
 
 console.log('Socket.io allowed origins:', allowedOrigins);
+console.log('NODE_ENV:', process.env.NODE_ENV);
 
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      console.log('Socket connection attempt from origin:', origin);
+      console.log('Socket connection attempt from:', origin);
       
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) {
         console.log('Allowing connection with no origin');
         return callback(null, true);
       }
-      
+
+      // In production, allow same origin and configured origins
+      if (process.env.NODE_ENV === 'production') {
+        console.log('Production mode - allowing connection');
+        return callback(null, true);
+      }
+
+      // In development, check against allowed origins
       if (allowedOrigins.indexOf(origin) === -1) {
         console.log('Origin not in allowed list:', origin);
-        // In production, allow all origins
-        if (process.env.NODE_ENV === 'production') {
-          console.log('Allowing in production');
-          return callback(null, true);
-        }
         return callback(new Error('Origin not allowed'));
       }
-      
+
       console.log('Origin allowed:', origin);
       return callback(null, true);
     },
     credentials: true,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST"]
   },
   pingTimeout: 60000,
   transports: ['websocket', 'polling'],
@@ -52,51 +55,68 @@ const io = new Server(server, {
   }
 });
 
-// used to store online users
-const userSocketMap = {}; // {userId: socketId}
+// Store for online users
+const userSocketMap = new Map();
 
 io.on("connection", (socket) => {
-  console.log('New socket connection. Auth:', socket.handshake.auth);
+  console.log('New socket connection attempt');
   
+  // Get user ID from auth or query
   const userId = socket.handshake.auth.userId || socket.handshake.query.userId;
   
-  if (userId) {
-    console.log('User connected:', userId);
-    userSocketMap[userId] = socket.id;
-    // Emit to all clients
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  if (!userId) {
+    console.log('No user ID provided - disconnecting socket');
+    socket.disconnect();
+    return;
   }
 
+  console.log('User connected:', userId);
+  
+  // Store user's socket
+  userSocketMap.set(userId, socket.id);
+  
+  // Emit online users to all clients
+  io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
+
+  // Handle setup
   socket.on("setup", (userData) => {
     console.log('Socket setup for user:', userData);
-    socket.join(userData); // Create a room for the user
+    socket.join(userData);
   });
 
   // Handle post events
   socket.on("newPost", (post) => {
-    console.log('New post received:', post?._id);
-    if (!post?._id) return;
+    if (!post?._id) {
+      console.warn('Invalid post data received');
+      return;
+    }
+    console.log('Broadcasting new post:', post._id);
     socket.broadcast.emit("newPost", post);
   });
 
   socket.on("updatePost", (post) => {
-    console.log('Post update received:', post?._id);
-    if (!post?._id) return;
+    if (!post?._id) {
+      console.warn('Invalid post update received');
+      return;
+    }
+    console.log('Broadcasting post update:', post._id);
     socket.broadcast.emit("updatePost", post);
   });
 
   socket.on("deletePost", (postId) => {
-    console.log('Post delete received:', postId);
-    if (!postId) return;
+    if (!postId) {
+      console.warn('Invalid post delete received');
+      return;
+    }
+    console.log('Broadcasting post delete:', postId);
     socket.broadcast.emit("deletePost", postId);
   });
 
+  // Handle disconnection
   socket.on("disconnect", () => {
     console.log('User disconnected:', userId);
-    if (userId) {
-      delete userSocketMap[userId];
-      io.emit("getOnlineUsers", Object.keys(userSocketMap));
-    }
+    userSocketMap.delete(userId);
+    io.emit("getOnlineUsers", Array.from(userSocketMap.keys()));
   });
 });
 
