@@ -27,19 +27,28 @@ const CreatePost = () => {
     e.preventDefault();
     if (!content.trim()) return;
 
-    const formData = new FormData();
-    formData.append("content", content);
-    if (image) {
-      console.log('Image being added to FormData:', image);
-      formData.append("image", image);
-    }
-
     try {
-      console.log('Submitting post with image:', image ? 'Yes' : 'No');
+      const formData = new FormData();
+      formData.append("content", content);
+      
+      if (image) {
+        console.log('Adding image to FormData:', {
+          name: image.name,
+          type: image.type,
+          size: image.size
+        });
+        formData.append("image", image);
+      }
+
+      // Log FormData contents
+      console.log('FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, ':', value instanceof File ? `File: ${value.name}` : value);
+      }
+
       const response = await createPost(formData);
       console.log('Post creation response:', response);
       
-      // Verify the image URL in the created post
       if (image && (!response?.image || response.image === '')) {
         console.error('Image URL missing in created post:', response);
         toast.error('Image upload failed. Please try again.');
@@ -49,6 +58,7 @@ const CreatePost = () => {
       setContent("");
       setImage(null);
       setImagePreview("");
+      toast.success('Post created successfully!');
     } catch (error) {
       console.error('Error creating post:', error);
       toast.error(error.response?.data?.message || 'Error creating post');
