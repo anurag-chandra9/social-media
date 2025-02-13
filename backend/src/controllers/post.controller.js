@@ -1,5 +1,5 @@
 import Post from "../models/post.model.js";
-import cloudinary from "../lib/cloudinary.js";
+import { uploadImage, deleteImage } from "../lib/cloudinary.js";
 
 // Create a new post
 export const createPost = async (req, res) => {
@@ -8,12 +8,11 @@ export const createPost = async (req, res) => {
     let imageUrl = "";
 
     if (req.file) {
-      const b64 = Buffer.from(req.file.buffer).toString("base64");
-      let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-      const uploadResponse = await cloudinary.uploader.upload(dataURI, {
-        resource_type: "auto",
-      });
-      imageUrl = uploadResponse.secure_url;
+      try {
+        imageUrl = await uploadImage(req.file);
+      } catch (error) {
+        return res.status(400).json({ message: "Error uploading image" });
+      }
     }
 
     const post = await Post.create({
@@ -51,8 +50,7 @@ export const deletePost = async (req, res) => {
 
     // Delete image from cloudinary if exists
     if (post.image) {
-      const imageId = post.image.split("/").pop().split(".")[0];
-      await cloudinary.uploader.destroy(imageId);
+      await deleteImage(post.image);
     }
 
     await Post.findByIdAndDelete(postId);
@@ -157,19 +155,16 @@ export const updatePost = async (req, res) => {
     let imageUrl = post.image; // Keep existing image by default
 
     if (req.file) {
-      // Delete old image from cloudinary if exists
-      if (post.image) {
-        const imageId = post.image.split("/").pop().split(".")[0];
-        await cloudinary.uploader.destroy(imageId);
+      try {
+        // Delete old image if exists
+        if (post.image) {
+          await deleteImage(post.image);
+        }
+        // Upload new image
+        imageUrl = await uploadImage(req.file);
+      } catch (error) {
+        return res.status(400).json({ message: "Error uploading image" });
       }
-
-      // Upload new image
-      const b64 = Buffer.from(req.file.buffer).toString("base64");
-      let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-      const uploadResponse = await cloudinary.uploader.upload(dataURI, {
-        resource_type: "auto",
-      });
-      imageUrl = uploadResponse.secure_url;
     }
 
     const updatedPost = await Post.findByIdAndUpdate(
